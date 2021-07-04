@@ -1,0 +1,103 @@
+---
+- hosts: t440
+  connection: ssh
+  become: true
+
+  pre_tasks:
+    - name: pre-run | update package cache
+      tags: always
+      apt: update_cache=yes
+      when: ansible_os_family == "Debian"
+
+    - name: pre-run | update apt packages
+      tags: always
+      apt: upgrade=dist
+      when: ansible_os_family == "Debian"
+
+    - name: pre-run | check if a reboot is needed on all servers
+      tags: always
+      register: reboot_required_file
+      stat: path=/var/run/reboot-required get_md5=no
+
+    - name: pre-run | reboot the box if kernel updated
+      tags: always
+      reboot:
+        msg: "Reboot initiated by Ansible for kernel updates"
+        connect_timeout: 5
+        reboot_timeout: 300
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: uptime
+      when: reboot_required_file.stat.exists
+
+  tasks:
+    - name: set hostname
+      become: yes
+      shell: "hostnamectl set-hostname --static t440"
+
+    - name: create dirs
+      file:
+        path: "{{ item }}"
+        state: directory
+      with_items:
+        - "{{ local_home }}/.local/bin"
+        - "{{ local_home }}/code"
+        - "{{ local_home }}/sites"
+
+    - name: install packages
+      package:
+        name:
+          - htop
+          - vim
+          - vim-airline
+          - fzf
+          - golang
+          - python3-pip
+
+    # Rust TOOLCHAINS
+    # https://www.rust-lang.org/tools/install
+    - name: install rust
+      shell: "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+
+    # Install rust extra tools
+    # cargo-edit https://github.com/killercup/cargo-edit very userful cargo extensions
+    - name: install cargo-edit
+      shell: "cargo install --force cargo-edit"
+
+    # cargo-make https://github.com/sagiegurari/cargo-make.git a rust build tool like make
+    - name: install cargo-make
+      shell: "cargo install --force cargo-make"
+
+    # bat https://github.com/sharkdp/bat a `cat` alternative
+    - name: install bat
+      shell: "cargo install --force bat"
+
+    # fd-find https://github.com/sharkdp/fd an `find` alternative
+    - name: install fd-find
+      shell: "cargo install --force fd-find"
+
+    # lsd https://github.com/Peltoche/lsd an `ls` alternative
+    - name: install lsd
+      shell: "cargo install --force lsd"
+
+    # tokei https://github.com/XAMPPRocky/tokei.git a basic code composition analyzer and line counter
+    - name: install tokei
+      shell: "cargo install --force tokei"
+
+    # du-dust https://github.com/bootandy/dust a `du` alternative
+    - name: install du-dust
+      shell: "cargo install --force du-dust"
+
+    # PENDING WAYLAND SUPPORT IN A FUTURE VERSION
+    # menyoki https://github.com/orhun/menyoki CLI record, play, view, edit tool
+    # - name: install menyoki
+    #   shell: "cargo install --force menyoki"
+
+    # jql https://github.com/yamafaktory/jql a command line JSON tool (like jq)
+    - name: install jql
+      shell: "cargo install --force jql"
+
+    # NodeJS TOOLCHAINS
+    # https://github.com/nvm-sh/nvm/blob/master/README.md
+    - name: install nvm
+      shell: "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash"

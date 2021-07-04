@@ -1,0 +1,2 @@
+# Set the static hostname
+sudo hostnamectl set-hostname --static <NAME>
